@@ -69,9 +69,12 @@ class Command:
             sublime.active_window().run_command("show_panel", {"panel": "output." + panelName})
         else:
             panel = sublime.active_window().new_file()
+            panel.set_name("SQL Results")
 
         panel.set_read_only(False)
-        panel.set_syntax_file('Packages/SQL/SQL.tmLanguage')
+        panel.set_syntax_file('Packages/SQLExec/SQLResults.tmLanguage')
+        panel.set_scratch(True)
+        print(panel.settings().get('syntax'))
         panel.run_command('append', {'characters': text})
         panel.set_read_only(True)
 
@@ -134,6 +137,7 @@ class Options:
         names.sort()
         return names
 
+
 def sqlChangeConnection(index):
     global connection
     names = Options.list()
@@ -171,10 +175,12 @@ def executeQuery(query):
     if connection != None:
         connection.execute(query)
 
+
 class sqlHistory(sublime_plugin.WindowCommand):
     global history
     def run(self):
         sublime.active_window().show_quick_panel(history, executeHistoryQuery)
+
 
 class sqlDesc(sublime_plugin.WindowCommand):
     def run(self):
@@ -185,6 +191,7 @@ class sqlDesc(sublime_plugin.WindowCommand):
         else:
             sublime.error_message('No active connection')
 
+
 class sqlShowRecords(sublime_plugin.WindowCommand):
     def run(self):
         global connection
@@ -193,6 +200,7 @@ class sqlShowRecords(sublime_plugin.WindowCommand):
             sublime.active_window().show_quick_panel(tables, showTableRecords)
         else:
             sublime.error_message('No active connection')
+
 
 class sqlQuery(sublime_plugin.WindowCommand):
     def run(self):
@@ -203,6 +211,7 @@ class sqlQuery(sublime_plugin.WindowCommand):
         else:
             sublime.error_message('No active connection')
 
+
 class sqlExecute(sublime_plugin.WindowCommand):
     def run(self):
         global connection
@@ -212,6 +221,60 @@ class sqlExecute(sublime_plugin.WindowCommand):
         else:
             sublime.error_message('No active connection')
 
+
 class sqlListConnection(sublime_plugin.WindowCommand):
     def run(self):
         sublime.active_window().show_quick_panel(Options.list(), sqlChangeConnection)
+
+
+class sqlPad(sublime_plugin.WindowCommand):
+    def run(self):
+        global connection
+        pad = sublime.active_window().new_file()
+        pad.set_name("SQL Pad")
+        pad.set_syntax_file('Packages/SQLExec/SQLExec.hidden-tmLanguage')
+        pad.settings().set('color_scheme','Packages/SQLExec/color_schemes/base16-tomorrow.dark.tmTheme')
+        pad.set_scratch(True)
+
+        if connection == None:
+            sublime.active_window().run_command("sql_list_connection")
+
+
+class SQLAutoComplete(sublime_plugin.EventListener):
+
+    # This will return all words found in the dictionary.
+    def get_autocomplete_list(self, word):
+        global connection
+        if connection != None:
+            self.word_list = connection.desc()
+            # print(self.word_list)
+        autocomplete_list = []
+        # filter relevant items:
+        for w in self.word_list:
+            try:
+                if word.lower() in w.lower():
+                    if len(word) > 0 and word[0].isupper():
+                        W = w.title()
+                        autocomplete_list.append((W, W))
+                    else:
+                        autocomplete_list.append((w, w))
+            except UnicodeDecodeError:
+                print(w)
+                continue
+        return autocomplete_list
+
+    # gets called when auto-completion pops up.
+    def on_query_completions(self, view, prefix, locations):
+        if view.match_selector(locations[0], "source.sql"):
+            return self.get_autocomplete_list(prefix)
+
+
+class sqlExecQuickPanel(sublime_plugin.WindowCommand):
+    def run(self):
+        items = ['Execute', 'History...', 'Desc Table...', 'Show Table Records...', 'List Connections...']
+        sublime.active_window().show_quick_panel(items, self.executeCommnad)
+
+    def executeCommnad(self, index):
+        commands = ['sql_execute', 'sql_history', 'sql_desc', 'sql_show_records', 'sql_list_connection']
+        sublime.set_timeout(lambda: sublime.active_window().run_command(commands[index]), 10)
+

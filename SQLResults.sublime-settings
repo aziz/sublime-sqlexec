@@ -1,0 +1,13 @@
+{
+  "color_scheme": "Packages/SQLExec/color_schemes/base16-tomorrow.light.tmTheme",
+  "line_numbers": false,
+  "margin": 0,
+  "word_wrap": false,
+  "rulers": [],
+  "spell_check": false,
+  "highlight_line": true,
+  "scroll_past_end": false,
+  "draw_indent_guides": false,
+  "fold_buttons": false,
+  "drag_text": false,
+}
